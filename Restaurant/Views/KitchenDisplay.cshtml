@@ -1,0 +1,116 @@
+﻿@using Restaurant.Models.Orders
+@model IEnumerable<Restaurant.Models.Orders.OrderDetail>
+
+@{
+    ViewData["Title"] = "Kitchen Display";
+}
+
+<div class="container">
+    <h1 class="text-center my-4">Kitchen Orders</h1>
+    <div id="ordersContainer">
+        @foreach (var item in Model)
+        {
+            <div class="card mb-3 order-card" id="order-@item.OrderDetailId"
+                 data-status="@item.Status.ToString().ToLower()">
+                <div class="card-header d-flex justify-content-between">
+                    <span>Order #@item.OrderId - @item.MenuItem.Name</span>
+                    <span class="badge bg-primary order-status">@item.Status</span>
+                </div>
+                <div class="card-body">
+                    <p>Table: @item.Order.Table.TableNumber</p>
+                    <p>Qty: @item.Quantity</p>
+                    @if (!string.IsNullOrEmpty(item.SpecialInstructions))
+                    {
+                        <p class="text-warning">Notes: @item.SpecialInstructions</p>
+                    }
+                    <button class="btn btn-sm btn-success update-status"
+                            data-id="@item.OrderDetailId" data-status="Preparing">
+                        Start Preparing
+                    </button>
+                    <button class="btn btn-sm btn-primary update-status"
+                            data-id="@item.OrderDetailId" data-status="Ready">
+                        Mark as Ready
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/microsoft-signalr/signalr.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Establish connection
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/orderHub")
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            // Start connection
+            connection.start().then(() => {
+                console.log("Connected to OrderHub");
+                connection.invoke("JoinKitchenGroup");
+            }).catch(err => {
+                console.error(err.toString());
+            });
+
+            // Handle status updates from server
+            connection.on("ReceiveOrderUpdate", (orderId, status) => {
+                const orderElement = $(`#order-${orderId}`);
+                if (orderElement.length) {
+                    orderElement.find('.order-status').text(status);
+                    orderElement.attr('data-status', status.toLowerCase());
+                    updateStatusColors();
+                }
+            });
+
+            // Update status button clicks
+            $(document).on('click', '.update-status', function() {
+                const orderId = $(this).data('id');
+                const newStatus = $(this).data('status');
+
+                $.post('/Orders/UpdateStatus', {
+                    id: orderId,
+                    status: newStatus
+                }).fail(function(error) {
+                    console.error('Error updating status:', error);
+                });
+            });
+
+            // Update visual status colors
+            function updateStatusColors() {
+                $('.order-card').each(function() {
+                    const status = $(this).attr('data-status');
+                    $(this).removeClass('border-warning border-primary border-success');
+
+                    switch(status) {
+                        case 'pending':
+                            $(this).addClass('border-warning');
+                            break;
+                        case 'preparing':
+                            $(this).addClass('border-primary');
+                            break;
+                        case 'ready':
+                            $(this).addClass('border-success');
+                            break;
+                    }
+                });
+            }
+
+            updateStatusColors();
+        });
+    </script>
+
+    <style>
+        .order-card[data-status="pending"] .card-header {
+            background-color: #fff3cd;
+        }
+        .order-card[data-status="preparing"] .card-header {
+            background-color: #cfe2ff;
+        }
+        .order-card[data-status="ready"] .card-header {
+            background-color: #d1e7dd;
+        }
+    </style>
+}
