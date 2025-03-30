@@ -39,6 +39,9 @@ namespace Restaurant.Models.Orders
         [Range(0, 10000)]
         public decimal TotalAmount { get; set; }
 
+        [DataType(DataType.DateTime)]
+        public DateTime? CompletedTime { get; set; } // Nullable if it's optional
+
         // Navigation properties
         public virtual Table Table { get; set; }
         public virtual ApplicationUser Staff { get; set; }

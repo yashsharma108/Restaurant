@@ -78,6 +78,10 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Kitchen}/{action=KitchenDisplay}/{id?}");
+
 app.MapHub<OrderHub>("/orderHub");
 
 // Database initialization (optional)

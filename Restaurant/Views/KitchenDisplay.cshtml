@@ -1,5 +1,5 @@
 ﻿@using Restaurant.Models.Orders
-@model IEnumerable<Restaurant.Models.Orders.OrderDetail>
+@model IEnumerable<Restaurant.Models.ViewModels.KitchenOrderViewModel>
 
 @{
     ViewData["Title"] = "Kitchen Display";
@@ -13,11 +13,11 @@
             <div class="card mb-3 order-card" id="order-@item.OrderDetailId"
                  data-status="@item.Status.ToString().ToLower()">
                 <div class="card-header d-flex justify-content-between">
-                    <span>Order #@item.OrderId - @item.MenuItem.Name</span>
+                    <span>Order #@item.OrderId - @item.MenuItemName</span>
                     <span class="badge bg-primary order-status">@item.Status</span>
                 </div>
                 <div class="card-body">
-                    <p>Table: @item.Order.Table.TableNumber</p>
+                    <p>Table: @item.TableNumber</p>
                     <p>Qty: @item.Quantity</p>
                     @if (!string.IsNullOrEmpty(item.SpecialInstructions))
                     {
@@ -30,6 +30,10 @@
                     <button class="btn btn-sm btn-primary update-status"
                             data-id="@item.OrderDetailId" data-status="Ready">
                         Mark as Ready
+                    </button>
+                    <button class="btn btn-sm btn-danger update-status"
+                            data-id="@item.OrderDetailId" data-status="Served">
+                        Mark as Served
                     </button>
                 </div>
             </div>
@@ -56,13 +60,17 @@
             });
 
             // Handle status updates from server
-            connection.on("ReceiveOrderUpdate", (orderId, status) => {
-                const orderElement = $(`#order-${orderId}`);
+            connection.on("OrderStatusUpdated", (update) => {
+                const orderElement = $(`#order-${update.OrderDetailId}`);
                 if (orderElement.length) {
-                    orderElement.find('.order-status').text(status);
-                    orderElement.attr('data-status', status.toLowerCase());
+                    orderElement.find('.order-status').text(update.NewStatus);
+                    orderElement.attr('data-status', update.NewStatus.toLowerCase());
                     updateStatusColors();
                 }
+            });
+
+            connection.on("OrderCompleted", (order) => {
+                $(`#order-${order.OrderId}`).remove();
             });
 
             // Update status button clicks
@@ -70,10 +78,10 @@
                 const orderId = $(this).data('id');
                 const newStatus = $(this).data('status');
 
-                $.post('/Orders/UpdateStatus', {
+                $.post('/Kitchen/UpdateStatus', {  // Changed to Kitchen controller
                     id: orderId,
                     status: newStatus
-                }).fail(function(error) {
+                }, null, 'json').fail(function(error) {
                     console.error('Error updating status:', error);
                 });
             });
@@ -82,7 +90,7 @@
             function updateStatusColors() {
                 $('.order-card').each(function() {
                     const status = $(this).attr('data-status');
-                    $(this).removeClass('border-warning border-primary border-success');
+                    $(this).removeClass('border-warning border-primary border-success border-danger');
 
                     switch(status) {
                         case 'pending':
@@ -93,6 +101,9 @@
                             break;
                         case 'ready':
                             $(this).addClass('border-success');
+                            break;
+                        case 'served':
+                            $(this).addClass('border-danger');
                             break;
                     }
                 });
@@ -111,6 +122,9 @@
         }
         .order-card[data-status="ready"] .card-header {
             background-color: #d1e7dd;
+        }
+        .order-card[data-status="served"] .card-header {
+            background-color: #f8d7da;
         }
     </style>
 }

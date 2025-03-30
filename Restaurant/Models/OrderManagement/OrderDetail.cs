@@ -38,6 +38,9 @@ namespace Restaurant.Models.Orders
         [Column(TypeName = "varchar(20)")] // Store enum as string
         public OrderItemStatus Status { get; set; }
 
+        [DataType(DataType.DateTime)]
+        public DateTime? LastUpdated { get; set; } // Nullable if it's optional
+
         // Navigation properties
         public virtual Order Order { get; set; }
         public virtual MenuItem MenuItem { get; set; }
